@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { MultilingualChatBot } from './components/MultilingualChatBot';
 import { AuthModal } from './components/AuthModal';
+import { LoadingSpinner } from './components/LoadingSpinner';
 import { HomePage } from './pages/HomePage';
 import { AboutPage } from './pages/AboutPage';
-import { DoctorsPage } from './pages/DoctorsPage';
-import { SymptomCheckerPage } from './pages/SymptomCheckerPage';
-import { EnhancedSymptomCheckerPage } from './pages/EnhancedSymptomCheckerPage';
-import { AppointmentPage } from './pages/AppointmentPage';
-import { ContactPage } from './pages/ContactPage';
-import { VideoConsultationPage } from './pages/VideoConsultationPage';
 import { useAuth } from './hooks/useAuth';
+
+// Lazy load heavy components
+const DoctorsPage = lazy(() => import('./pages/DoctorsPage').then(module => ({ default: module.DoctorsPage })));
+const SymptomCheckerPage = lazy(() => import('./pages/SymptomCheckerPage').then(module => ({ default: module.SymptomCheckerPage })));
+const EnhancedSymptomCheckerPage = lazy(() => import('./pages/EnhancedSymptomCheckerPage').then(module => ({ default: module.EnhancedSymptomCheckerPage })));
+const AppointmentPage = lazy(() => import('./pages/AppointmentPage').then(module => ({ default: module.AppointmentPage })));
+const ContactPage = lazy(() => import('./pages/ContactPage').then(module => ({ default: module.ContactPage })));
+const VideoConsultationPage = lazy(() => import('./pages/VideoConsultationPage').then(module => ({ default: module.VideoConsultationPage })));
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <LoadingSpinner size="lg" text="Loading page..." />
+  </div>
+);
 
 function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -49,32 +59,44 @@ function App() {
             {/* Protected routes - require authentication */}
             <Route path="/doctors" element={
               <ProtectedRoute>
-                <DoctorsPage />
+                <Suspense fallback={<PageLoader />}>
+                  <DoctorsPage />
+                </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/symptom-checker" element={
               <ProtectedRoute>
-                <SymptomCheckerPage />
+                <Suspense fallback={<PageLoader />}>
+                  <SymptomCheckerPage />
+                </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/enhanced-symptom-checker" element={
               <ProtectedRoute>
-                <EnhancedSymptomCheckerPage />
+                <Suspense fallback={<PageLoader />}>
+                  <EnhancedSymptomCheckerPage />
+                </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/appointments" element={
               <ProtectedRoute>
-                <AppointmentPage />
+                <Suspense fallback={<PageLoader />}>
+                  <AppointmentPage />
+                </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/contact" element={
               <ProtectedRoute>
-                <ContactPage />
+                <Suspense fallback={<PageLoader />}>
+                  <ContactPage />
+                </Suspense>
               </ProtectedRoute>
             } />
             <Route path="/video-consultation" element={
               <ProtectedRoute>
-                <VideoConsultationPage />
+                <Suspense fallback={<PageLoader />}>
+                  <VideoConsultationPage />
+                </Suspense>
               </ProtectedRoute>
             } />
           </Routes>

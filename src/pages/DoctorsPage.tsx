@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { MessageCircle, Calendar, Star, Award, Clock, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { LazyImage } from '../components/LazyImage';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { useDebounce } from '../hooks/useDebounce';
 
 interface Doctor {
   id: number;
@@ -268,7 +271,11 @@ const mockDoctors: Doctor[] = [
 export const DoctorsPage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'young' | 'retired'>('all');
   const [specializationFilter, setSpecializationFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const specializations = Array.from(new Set(mockDoctors.map(doctor => doctor.specialization))).sort();
 
@@ -279,7 +286,12 @@ export const DoctorsPage: React.FC = () => {
     
     const specFilter = specializationFilter === 'all' || doctor.specialization === specializationFilter;
     
-    return ageFilter && specFilter;
+    const searchFilter = debouncedSearchTerm === '' || 
+                        doctor.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                        doctor.specialization.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                        doctor.location.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+    
+    return ageFilter && specFilter && searchFilter;
   });
 
   const handleBookAppointment = (doctor: Doctor) => {
@@ -293,10 +305,10 @@ export const DoctorsPage: React.FC = () => {
   const DoctorCard: React.FC<{ doctor: Doctor }> = ({ doctor }) => (
     <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden">
       <div className="relative">
-        <img
+        <LazyImage
           src={doctor.image}
           alt={doctor.name}
-          className="w-full h-56 object-cover"
+          className="w-full h-56"
         />
         {doctor.isRetired && (
           <div className="absolute top-4 right-4 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium flex items-center">
@@ -372,7 +384,19 @@ export const DoctorsPage: React.FC = () => {
 
         {/* Filter Section */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Search Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Search Doctors</label>
+              <input
+                type="text"
+                placeholder="Search by name, specialty, or location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+              />
+            </div>
+
             {/* Experience Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">Filter by Experience</label>
@@ -437,11 +461,17 @@ export const DoctorsPage: React.FC = () => {
         </div>
 
         {/* Doctors Grid */}
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <LoadingSpinner size="lg" text="Loading doctors..." />
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredDoctors.map(doctor => (
             <DoctorCard key={doctor.id} doctor={doctor} />
           ))}
         </div>
+        )}
 
         {filteredDoctors.length === 0 && (
           <div className="text-center py-12">

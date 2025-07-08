@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Phone, Mail, CheckCircle, Stethoscope, ArrowRight } from 'lucide-react';
+import { LazyImage } from '../components/LazyImage';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 
 interface Doctor {
   id: number;
@@ -269,10 +271,10 @@ export const AppointmentPage: React.FC = () => {
               {selectedDoctor && (
                 <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
                   <div className="flex items-center">
-                    <img
+                    <LazyImage
                       src={selectedDoctor.image}
                       alt={selectedDoctor.name}
-                      className="w-16 h-16 rounded-full object-cover mr-4"
+                      className="w-16 h-16 rounded-full mr-4"
                     />
                     <div>
                       <h3 className="font-bold text-gray-900">{selectedDoctor.name}</h3>
@@ -298,10 +300,10 @@ export const AppointmentPage: React.FC = () => {
                       onClick={() => setSelectedDoctor(doctor)}
                       className="p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 border-gray-200 hover:border-sky-300"
                     >
-                      <img
+                      <LazyImage
                         src={doctor.image}
                         alt={doctor.name}
-                        className="w-16 h-16 rounded-full mx-auto mb-3 object-cover"
+                        className="w-16 h-16 rounded-full mx-auto mb-3"
                       />
                       <h3 className="font-semibold text-center mb-1">{doctor.name}</h3>
                       <p className="text-sm text-sky-600 text-center font-medium">{doctor.specialization}</p>

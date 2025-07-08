@@ -1,11 +1,78 @@
 import { createClient } from '@supabase/supabase-js';
 import { config, isServiceConfigured } from './config';
 
+// Connection pool and caching
+let supabaseInstance: any = null;
+const queryCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // Create Supabase client with configuration
-export const supabase = createClient(
-  config.supabase.url,
-  config.supabase.anonKey
-);
+export const supabase = (() => {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(
+      config.supabase.url,
+      config.supabase.anonKey,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+        db: {
+          schema: 'public',
+        },
+        global: {
+          headers: {
+            'x-client-info': 'medassist-web',
+          },
+        },
+      }
+    );
+  }
+  return supabaseInstance;
+})();
+
+// Cache helper functions
+const getCacheKey = (table: string, query: any) => {
+  return `${table}_${JSON.stringify(query)}`;
+};
+
+const getCachedData = (key: string) => {
+  const cached = queryCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedData = (key: string, data: any) => {
+  queryCache.set(key, {
+    data,
+    timestamp: Date.now(),
+  });
+};
+
+// Debounced query function
+const debounceMap = new Map();
+const debounceQuery = (key: string, queryFn: () => Promise<any>, delay: number = 300) => {
+  return new Promise((resolve, reject) => {
+    if (debounceMap.has(key)) {
+      clearTimeout(debounceMap.get(key));
+    }
+    
+    const timeoutId = setTimeout(async () => {
+      try {
+        const result = await queryFn();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      } finally {
+        debounceMap.delete(key);
+      }
+    }, delay);
+    
+    debounceMap.set(key, timeoutId);
+  });
+};
 
 // Database types
 export interface Doctor {
@@ -428,15 +495,26 @@ export const dataService = {
       return [];
     }
 
-    try {
-      const { data, error } = await supabase
-        .from('doctors')
-        .select('*')
-        .eq('verification_status', 'verified')
-        .order('rating', { ascending: false });
+    const cacheKey = getCacheKey('doctors', { verified: true });
+    const cachedData = getCachedData(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
 
-      if (error) throw error;
-      return data;
+    try {
+      const result = await debounceQuery('verified_doctors', async () => {
+        const { data, error } = await supabase
+          .from('doctors')
+          .select('*')
+          .eq('verification_status', 'verified')
+          .order('rating', { ascending: false });
+
+        if (error) throw error;
+        return data;
+      });
+
+      setCachedData(cacheKey, result);
+      return result;
     } catch (error) {
       console.error('Get verified doctors error:', error);
       return [];
