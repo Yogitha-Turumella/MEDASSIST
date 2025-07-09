@@ -16,12 +16,24 @@ export const useAuth = () => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Add timeout to prevent infinite loading
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 8000)
+        );
+        
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+        
         if (session?.user) {
-          await loadUserProfile(session.user);
+          try {
+            await loadUserProfile(session.user);
+          } catch (profileError) {
+            console.warn('Profile loading failed, continuing with basic auth:', profileError);
+            setUser(session.user as AuthUser);
+          }
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
+        console.warn('Error getting initial session (using offline mode):', error.message);
       } finally {
         setLoading(false);
       }

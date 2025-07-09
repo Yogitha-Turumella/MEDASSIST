@@ -9,6 +9,35 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 // Create Supabase client with configuration
 export const supabase = (() => {
   if (!supabaseInstance) {
+    // Check if Supabase is properly configured
+    if (!isServiceConfigured('supabase')) {
+      console.warn('Supabase not properly configured, using mock client');
+      // Return a mock client that won't make network requests
+      supabaseInstance = {
+        auth: {
+          getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+          onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+          signUp: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+          signInWithPassword: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+          signOut: () => Promise.resolve({ error: null }),
+          getUser: () => Promise.resolve({ data: { user: null }, error: null })
+        },
+        from: () => ({
+          select: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }),
+          insert: () => ({ select: () => Promise.resolve({ data: [], error: null }) }),
+          update: () => ({ eq: () => ({ select: () => Promise.resolve({ data: [], error: null }) }) }),
+          eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) })
+        }),
+        storage: {
+          from: () => ({
+            upload: () => Promise.resolve({ error: new Error('Storage not configured') }),
+            getPublicUrl: () => ({ data: { publicUrl: 'mock-url' } })
+          })
+        }
+      };
+      return supabaseInstance;
+    }
+
     supabaseInstance = createClient(
       config.supabase.url,
       config.supabase.anonKey,
@@ -16,6 +45,7 @@ export const supabase = (() => {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
+          detectSessionInUrl: false
         },
         db: {
           schema: 'public',
@@ -24,6 +54,18 @@ export const supabase = (() => {
           headers: {
             'x-client-info': 'medassist-web',
           },
+          fetch: (url, options = {}) => {
+            // Add timeout to prevent infinite buffering
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            return fetch(url, {
+              ...options,
+              signal: controller.signal
+            }).finally(() => {
+              clearTimeout(timeoutId);
+            });
+          }
         },
       }
     );

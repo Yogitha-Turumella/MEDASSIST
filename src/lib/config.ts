@@ -93,8 +93,9 @@ const validateRequiredConfig = (): void => {
   const missingVars = requiredVars.filter(varName => !import.meta.env[varName]);
   
   if (missingVars.length > 0) {
-    console.error('Missing required environment variables:', missingVars);
-    console.error('Please check your .env file and ensure all required variables are set.');
+    console.warn('Missing required environment variables:', missingVars);
+    console.warn('Please check your .env file and ensure all required variables are set.');
+    console.warn('The application will run in demo mode with limited functionality.');
   }
 };
 
@@ -163,8 +164,11 @@ export const isDebugMode = (): boolean => {
 export const isServiceConfigured = (service: keyof Config): boolean => {
   switch (service) {
     case 'supabase':
-      return !!(config.supabase.url && config.supabase.anonKey && 
-                config.supabase.url !== 'https://placeholder.supabase.co');
+      return !!(config.supabase.url && 
+                config.supabase.anonKey && 
+                config.supabase.url !== 'https://placeholder.supabase.co' &&
+                config.supabase.url.includes('.supabase.co') &&
+                config.supabase.anonKey.startsWith('eyJ'));
     case 'ai':
       return !!(config.ai.openaiApiKey || config.ai.googleCloudApiKey || config.ai.visionApiKey);
     case 'video':
