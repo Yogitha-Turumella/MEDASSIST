@@ -227,7 +227,13 @@ export const authService = {
   // Sign up new user
   async signUp(email: string, password: string, userData: { name: string; userType: 'patient' | 'doctor' }) {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // Check if Supabase is configured
+      if (!isServiceConfigured('supabase')) {
+        throw new Error('Authentication service is not available. Please check your configuration.');
+      }
+
+      // Add timeout wrapper
+      const signUpPromise = supabase.auth.signUp({
         email,
         password,
         options: {
@@ -237,6 +243,12 @@ export const authService = {
           }
         }
       });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign up request timed out')), 10000)
+      );
+      
+      const { data, error } = await Promise.race([signUpPromise, timeoutPromise]);
 
       if (error) throw error;
 
@@ -263,10 +275,22 @@ export const authService = {
   // Sign in user
   async signIn(email: string, password: string) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Check if Supabase is configured
+      if (!isServiceConfigured('supabase')) {
+        throw new Error('Authentication service is not available. Please check your configuration.');
+      }
+
+      // Add timeout wrapper
+      const signInPromise = supabase.auth.signInWithPassword({
         email,
         password
       });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign in request timed out')), 8000)
+      );
+      
+      const { data, error } = await Promise.race([signInPromise, timeoutPromise]);
 
       if (error) throw error;
       return data;
@@ -279,21 +303,44 @@ export const authService = {
   // Sign out user
   async signOut() {
     try {
-      const { error } = await supabase.auth.signOut();
+      // Check if Supabase is configured
+      if (!isServiceConfigured('supabase')) {
+        console.warn('Supabase not configured, clearing local session only');
+        return;
+      }
+
+      // Add timeout wrapper
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign out request timed out')), 5000)
+      );
+      
+      const { error } = await Promise.race([signOutPromise, timeoutPromise]);
       if (error) throw error;
     } catch (error) {
-      console.error('Sign out error:', error);
-      throw error;
+      console.warn('Sign out error (clearing local session):', error);
+      // Don't throw error for sign out - just clear local state
     }
   },
 
   // Get current user
   async getCurrentUser() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Check if Supabase is configured
+      if (!isServiceConfigured('supabase')) {
+        return null;
+      }
+
+      // Add timeout wrapper
+      const getUserPromise = supabase.auth.getUser();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Get user request timed out')), 5000)
+      );
+      
+      const { data: { user } } = await Promise.race([getUserPromise, timeoutPromise]);
       return user;
     } catch (error) {
-      console.error('Get current user error:', error);
+      console.warn('Get current user error:', error);
       return null;
     }
   },

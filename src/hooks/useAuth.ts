@@ -95,9 +95,16 @@ export const useAuth = () => {
   const signUp = async (email: string, password: string, userData: { name: string; userType: 'patient' | 'doctor' }) => {
     setLoading(true);
     try {
-      const result = await authService.signUp(email, password, userData);
+      // Add timeout to prevent infinite loading
+      const signUpPromise = authService.signUp(email, password, userData);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign up timeout - please try again')), 15000)
+      );
+      
+      const result = await Promise.race([signUpPromise, timeoutPromise]);
       return result;
     } catch (error) {
+      console.error('Sign up error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -107,9 +114,16 @@ export const useAuth = () => {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const result = await authService.signIn(email, password);
+      // Add timeout to prevent infinite loading
+      const signInPromise = authService.signIn(email, password);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign in timeout - please check your connection and try again')), 12000)
+      );
+      
+      const result = await Promise.race([signInPromise, timeoutPromise]);
       return result;
     } catch (error) {
+      console.error('Sign in error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -119,10 +133,20 @@ export const useAuth = () => {
   const signOut = async () => {
     setLoading(true);
     try {
-      await authService.signOut();
+      // Add timeout for sign out
+      const signOutPromise = authService.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Sign out timeout')), 8000)
+      );
+      
+      await Promise.race([signOutPromise, timeoutPromise]);
       setUser(null);
       setProfile(null);
     } catch (error) {
+      console.error('Sign out error:', error);
+      // Even if sign out fails, clear local state
+      setUser(null);
+      setProfile(null);
       throw error;
     } finally {
       setLoading(false);

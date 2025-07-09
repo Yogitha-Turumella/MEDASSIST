@@ -48,7 +48,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultMo
         onClose();
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      const errorMessage = err.message || 'An error occurred';
+      setError(errorMessage);
+      
+      // Show user-friendly messages for common errors
+      if (errorMessage.includes('timeout')) {
+        setError('Connection timeout. Please check your internet connection and try again.');
+      } else if (errorMessage.includes('Invalid login credentials')) {
+        setError('Invalid email or password. Please check your credentials and try again.');
+      } else if (errorMessage.includes('not available')) {
+        setError('Authentication service is temporarily unavailable. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }

@@ -211,7 +211,12 @@ export const logConfigStatus = (): void => {
 
 // Validate configuration on module load
 if (isDevelopment()) {
-  validateRequiredConfig();
+  // Only validate in development, don't block the app
+  try {
+    validateRequiredConfig();
+  } catch (error) {
+    console.warn('Configuration validation failed:', error);
+  }
   logConfigStatus();
 }
 
